@@ -1,20 +1,16 @@
 # GPT-2 Chatbot
 
-A simple text chatbot powered by OpenAI's GPT-2, built with Streamlit.
+OpenAI の GPT-2 を使ったシンプルなテキストチャットボットです。
 
-## Models
+## モデル
 
-| Model | Size |
+| モデル | パラメータ数 |
 |-------|------|
 | gpt2 small | 124M |
 | gpt2 medium | 355M |
 
-## Run locally
+## ローカルで実行
 
 ```bash
 uv run streamlit run app.py
 ```
-
-## Deploy
-
-Deployed on [Streamlit Community Cloud](https://streamlit.io/cloud).
