@@ -5,7 +5,6 @@ import torch
 MODELS = {
     "gpt2 small (124M)": "openai-community/gpt2",
     "gpt2 medium (355M)": "openai-community/gpt2-medium",
-    "gpt2 large (774M)": "openai-community/gpt2-large",
 }
 
 @st.cache_resource
@@ -36,8 +35,6 @@ with st.sidebar:
     st.header("モデル設定")
     model_label = st.selectbox("モデルを選択", list(MODELS.keys()))
     model_name = MODELS[model_label]
-    if "large" in model_label:
-        st.warning("This model may run out of memory on Streamlit Cloud.")
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
