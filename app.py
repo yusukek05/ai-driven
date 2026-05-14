@@ -2,12 +2,17 @@ import streamlit as st
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 
-MODEL_NAME = "rinna/japanese-gpt2-small"
+MODELS = {
+    "gpt2 small (124M)": "openai-community/gpt2",
+    "gpt2 medium (355M)": "openai-community/gpt2-medium",
+    "gpt2 large (774M)": "openai-community/gpt2-large",
+    "gpt2 xl (1.5B)": "openai-community/gpt2-xl",
+}
 
 @st.cache_resource
-def load_model():
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, use_fast=False)
-    model = AutoModelForCausalLM.from_pretrained(MODEL_NAME, torch_dtype=torch.float16, low_cpu_mem_usage=True)
+def load_model(model_name: str):
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16, low_cpu_mem_usage=True)
     model.eval()
     return tokenizer, model
 
@@ -26,18 +31,32 @@ def generate(tokenizer, model, prompt: str, max_new_tokens: int = 100) -> str:
     generated = output[0][inputs["input_ids"].shape[1]:]
     return tokenizer.decode(generated, skip_special_tokens=True)
 
-st.title("日本語チャットボット")
+st.title("GPT-2 Chatbot")
+
+with st.sidebar:
+    st.header("モデル設定")
+    model_label = st.selectbox("モデルを選択", list(MODELS.keys()))
+    model_name = MODELS[model_label]
+    if "xl" in model_label or "large" in model_label:
+        st.warning("This model may run out of memory on Streamlit Cloud.")
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-tokenizer, model = load_model()
+if "current_model" not in st.session_state:
+    st.session_state.current_model = model_name
+
+if st.session_state.current_model != model_name:
+    st.session_state.messages = []
+    st.session_state.current_model = model_name
+
+tokenizer, model = load_model(model_name)
 
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
 
-if prompt := st.chat_input("メッセージを入力してください"):
+if prompt := st.chat_input("Type a message..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.write(prompt)
