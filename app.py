@@ -1,5 +1,6 @@
+import threading
 import streamlit as st
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, TextIteratorStreamer
 import torch
 
 MODELS = {
@@ -14,26 +15,28 @@ def load_model(model_name: str):
     model.eval()
     return tokenizer, model
 
-def generate(tokenizer, model, prompt: str, max_new_tokens: int = 100) -> str:
+def stream_generate(tokenizer, model, prompt: str, max_new_tokens: int = 100):
     inputs = tokenizer(prompt, return_tensors="pt")
-    with torch.no_grad():
-        output = model.generate(
-            **inputs,
-            max_new_tokens=max_new_tokens,
-            do_sample=True,
-            temperature=0.8,
-            top_p=0.9,
-            repetition_penalty=1.3,
-            pad_token_id=tokenizer.eos_token_id,
-        )
-    generated = output[0][inputs["input_ids"].shape[1]:]
-    return tokenizer.decode(generated, skip_special_tokens=True)
+    streamer = TextIteratorStreamer(tokenizer, skip_prompt=True, skip_special_tokens=True)
+    gen_kwargs = dict(
+        **inputs,
+        max_new_tokens=max_new_tokens,
+        do_sample=True,
+        temperature=0.8,
+        top_p=0.9,
+        repetition_penalty=1.3,
+        pad_token_id=tokenizer.eos_token_id,
+        streamer=streamer,
+    )
+    thread = threading.Thread(target=model.generate, kwargs=gen_kwargs)
+    thread.start()
+    return streamer
 
 st.title("GPT-2 Chatbot")
 
 with st.sidebar:
-    st.header("モデル設定")
-    model_label = st.selectbox("モデルを選択", list(MODELS.keys()))
+    st.header("Model")
+    model_label = st.selectbox("Select model", list(MODELS.keys()))
     model_name = MODELS[model_label]
 
 if "messages" not in st.session_state:
@@ -58,8 +61,7 @@ if prompt := st.chat_input("Type a message..."):
         st.write(prompt)
 
     with st.chat_message("assistant"):
-        with st.spinner("生成中..."):
-            response = generate(tokenizer, model, prompt)
-        st.write(response)
+        streamer = stream_generate(tokenizer, model, prompt)
+        response = st.write_stream(streamer)
 
     st.session_state.messages.append({"role": "assistant", "content": response})
